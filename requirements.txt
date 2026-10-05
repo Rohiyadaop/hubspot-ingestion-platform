@@ -1,0 +1,10 @@
+fastapi
+uvicorn[standard]
+dlt
+pandas
+pyarrow
+minio
+clickhouse-connect
+httpx
+python-dotenv
+pydantic
