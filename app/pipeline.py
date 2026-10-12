@@ -29,7 +29,10 @@
 
 
 import dlt
+
+from app.config import STATE_FILE
 from app.hubspot_source import hubspot_source
+from app.state_manager import StateManager
 
 
 def run_pipeline():
@@ -47,8 +50,19 @@ def run_pipeline():
         loader_file_format="parquet",
     )
 
+    state = StateManager(STATE_FILE)
+    state.save({
+        "pipeline_name": "hubspot_ingestion",
+        "dataset_name": "hubspot_data",
+        "last_run": {
+            "status": "completed",
+            "load_info": str(load_info),
+        },
+    })
+
     print("\nPipeline execution completed!")
     print(load_info)
+    return load_info
 
 
 if __name__ == "__main__":
