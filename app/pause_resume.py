@@ -9,7 +9,9 @@ class PauseResumeManager:
     def __init__(self, state_manager: StateManager | None = None):
         self.state_manager = state_manager or StateManager()
 
-    def checkpoint(self, resource_name: str, cursor: str | None = None, **extra) -> None:
+    def checkpoint(self, resource_name: str, cursor: str | None = None, **extra: object) -> None:
+        if cursor is None:
+            extra["clear_cursor"] = True
         self.state_manager.set_resource_state(resource_name, cursor=cursor, **extra)
 
     def get_checkpoint(self, resource_name: str) -> dict[str, object]:

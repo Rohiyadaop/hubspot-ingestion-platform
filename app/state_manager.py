@@ -1,6 +1,9 @@
 from __future__ import annotations
 
 import json
+import os
+import tempfile
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +16,7 @@ class StateManager:
     def __init__(self, state_file: str | Path = STATE_FILE):
         self.state_file = Path(state_file)
         self.state_file.parent.mkdir(parents=True, exist_ok=True)
+        self._lock = threading.RLock()
 
     def load(self) -> dict[str, Any]:
         if not self.state_file.exists():
@@ -26,20 +30,31 @@ class StateManager:
             return {}
 
     def save(self, payload: dict[str, Any]) -> None:
-        current = self.load()
-        current.update(payload)
-        with self.state_file.open("w", encoding="utf-8") as file:
-            json.dump(current, file, indent=2, sort_keys=True)
-            file.write("\n")
+        with self._lock:
+            current = self.load()
+            current.update(payload)
+            fd, temporary_name = tempfile.mkstemp(
+                prefix=f"{self.state_file.name}.", suffix=".tmp", dir=self.state_file.parent
+            )
+            try:
+                with os.fdopen(fd, "w", encoding="utf-8") as file:
+                    json.dump(current, file, indent=2, sort_keys=True)
+                    file.write("\n")
+                os.replace(temporary_name, self.state_file)
+            finally:
+                if os.path.exists(temporary_name):
+                    os.unlink(temporary_name)
 
     def set_resource_state(self, resource_name: str, cursor: str | None = None, **extra: Any) -> None:
-        state = self.load()
-        resource_state = state.setdefault("resources", {}).setdefault(resource_name, {})
-        if cursor is not None:
-            resource_state["cursor"] = cursor
-        for key, value in extra.items():
-            resource_state[key] = value
-        self.save(state)
+        with self._lock:
+            state = self.load()
+            resource_state = state.setdefault("resources", {}).setdefault(resource_name, {})
+            if cursor is not None:
+                resource_state["cursor"] = cursor
+            if extra.pop("clear_cursor", False):
+                resource_state.pop("cursor", None)
+            resource_state.update(extra)
+            self.save(state)
 
     def get_resource_state(self, resource_name: str) -> dict[str, Any]:
         return self.load().get("resources", {}).get(resource_name, {})

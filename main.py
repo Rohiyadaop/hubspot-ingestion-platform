@@ -8,7 +8,13 @@ def start_mock_api() -> None:
 
     from mock_hubspot.server import app
 
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+def start_service() -> None:
+    from app.api import run
+
+    run()
 
 
 def run_pipeline() -> None:
@@ -45,6 +51,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="HubSpot ingestion platform control panel")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
+    subparsers.add_parser("serve", help="Start the ingestion API service")
     subparsers.add_parser("mock", help="Start the local mock HubSpot API")
     subparsers.add_parser("pipeline", help="Run the dlt ingestion pipeline")
     subparsers.add_parser("clickhouse", help="Load parquet files into ClickHouse")
@@ -58,6 +65,8 @@ def main() -> None:
 
     if args.command == "mock":
         start_mock_api()
+    elif args.command == "serve":
+        start_service()
     elif args.command == "pipeline":
         run_pipeline()
     elif args.command == "clickhouse":
