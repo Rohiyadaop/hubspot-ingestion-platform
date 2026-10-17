@@ -79,9 +79,7 @@ def test_unsigned_control_request_is_rejected(monkeypatch):
     fake_store = FakeStore()
     monkeypatch.setattr(api, "store", fake_store)
     monkeypatch.setattr(api.app.state, "job_store", fake_store)
-    client = TestClient(api.app)
-
-    response = client.get("/jobs")
+    response = TestClient(api.app).get("/jobs")
 
     assert response.status_code == 401
 
@@ -159,6 +157,10 @@ def test_job_pause_resume_cancel_and_status_routes(monkeypatch):
 
 
 def test_validate_credentials_route(monkeypatch):
+    fake_store = FakeStore()
+    monkeypatch.setattr(api, "store", fake_store)
+    monkeypatch.setattr(api.app.state, "job_store", fake_store)
+
     class ValidClient:
         def validate_credentials(self):
             return True
