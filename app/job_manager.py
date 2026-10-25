@@ -68,7 +68,7 @@ class JobManager:
             return 0
         cursor = current.get("checkpoints", {}).get(resource)
         if cursor is None:
-            cursor = self.pause_manager.resume_from_checkpoint(resource)
+            cursor = self.pause_manager.resume_from_checkpoint(resource, job_id=job_id)
 
         client = HubSpotClient()
         records_written = 0

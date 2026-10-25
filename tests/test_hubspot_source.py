@@ -61,6 +61,29 @@ def test_retries_429_and_honors_retry_after(monkeypatch):
     assert session.get.call_args.kwargs["headers"]["Authorization"] == "Bearer test-token"
 
 
+def test_retries_transient_connection_errors(monkeypatch):
+    session = Mock()
+    session.get.side_effect = [
+        requests.ConnectionError("temporary network failure"),
+        FakeResponse(200, {"results": [{"id": "1"}], "paging": {"next": None}}),
+    ]
+    sleeps: list[float] = []
+    monkeypatch.setattr("app.hubspot_source.time.sleep", sleeps.append)
+    client = HubSpotClient(
+        base_url="https://api.hubapi.com",
+        access_token="test-token",
+        session=session,
+        max_retries=1,
+    )
+
+    rows, cursor = client.fetch_page("contacts")
+
+    assert rows == [{"id": "1"}]
+    assert cursor is None
+    assert sleeps == [1.0]
+    assert session.get.call_count == 2
+
+
 def test_http_date_retry_after_is_parsed():
     from datetime import datetime, timedelta, timezone
     from email.utils import format_datetime

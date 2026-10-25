@@ -45,10 +45,25 @@ class StateManager:
                 if os.path.exists(temporary_name):
                     os.unlink(temporary_name)
 
-    def set_resource_state(self, resource_name: str, cursor: str | None = None, **extra: Any) -> None:
+    def set_resource_state(
+        self,
+        resource_name: str,
+        cursor: str | None = None,
+        *,
+        job_id: str | None = None,
+        **extra: Any,
+    ) -> None:
         with self._lock:
             state = self.load()
-            resource_state = state.setdefault("resources", {}).setdefault(resource_name, {})
+            if job_id is None:
+                resources = state.setdefault("resources", {})
+            else:
+                resources = (
+                    state.setdefault("jobs", {})
+                    .setdefault(str(job_id), {})
+                    .setdefault("resources", {})
+                )
+            resource_state = resources.setdefault(resource_name, {})
             if cursor is not None:
                 resource_state["cursor"] = cursor
             if extra.pop("clear_cursor", False):
@@ -56,8 +71,15 @@ class StateManager:
             resource_state.update(extra)
             self.save(state)
 
-    def get_resource_state(self, resource_name: str) -> dict[str, Any]:
-        return self.load().get("resources", {}).get(resource_name, {})
+    def get_resource_state(
+        self, resource_name: str, *, job_id: str | None = None
+    ) -> dict[str, Any]:
+        state = self.load()
+        if job_id is None:
+            resources = state.get("resources", {})
+        else:
+            resources = state.get("jobs", {}).get(str(job_id), {}).get("resources", {})
+        return resources.get(resource_name, {})
 
     def clear(self) -> None:
         if self.state_file.exists():

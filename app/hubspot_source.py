@@ -90,12 +90,18 @@ class HubSpotClient:
             headers["Authorization"] = f"Bearer {self.access_token}"
 
         for attempt in range(self.max_retries + 1):
-            response = self.session.get(
-                f"{self.base_url}{path}",
-                params=params,
-                headers=headers,
-                timeout=self.timeout,
-            )
+            try:
+                response = self.session.get(
+                    f"{self.base_url}{path}",
+                    params=params,
+                    headers=headers,
+                    timeout=self.timeout,
+                )
+            except (requests.ConnectionError, requests.Timeout):
+                if attempt >= self.max_retries:
+                    raise
+                time.sleep(min(2**attempt, 60.0))
+                continue
             if response.status_code == 429 or 500 <= response.status_code < 600:
                 if attempt < self.max_retries:
                     time.sleep(self._retry_after(response, attempt))

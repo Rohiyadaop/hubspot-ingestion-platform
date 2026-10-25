@@ -23,6 +23,9 @@ job_manager = JobManager(store=store)
 async def lifespan(_: FastAPI):
     store.ensure_schema()
     app.state.job_store = store
+    app.state.job_manager = job_manager
+    # Keep the coordinator attached to the same repository exposed by the app.
+    job_manager.store = store
     job_manager.recover()
     yield
 
